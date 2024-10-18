@@ -15,6 +15,15 @@ st.title('Sales Prediction Dashboard')
 uploaded_file = st.file_uploader("Choose an Excel file", type="xlsx")
 
 if uploaded_file is not None:
+    # Path to the directory
+    params_dir = './params'
+
+    # Create the directory if it doesn't exist
+    if not os.path.exists(params_dir):
+        os.makedirs(params_dir)
+    else:
+        print(f"{params_dir} already exists.")
+        
     df = pd.read_excel(uploaded_file, engine='openpyxl')
     st.write("### Data Overview", df.head())
 

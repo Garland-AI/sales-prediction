@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Reshape
+from tensorflow.keras.models import load_model
 
 # Title for the Streamlit app
 st.title('Sales Prediction Dashboard')
@@ -41,13 +42,18 @@ if uploaded_file is not None:
     
     last_period = grouped['YearMonth'].max()
     filtered_study = grouped[grouped['YearMonth'] == last_period]
-    study_items = np.sort(filtered_study['Itemcode'].unique())
-    study_customers = np.sort(filtered_study['Customer ID'].unique())
+    
+    # Load the data from the .npz file
+    data_load = np.load('./params/study_data.npz' , allow_pickle=True)
+    study_items = data_load['study_items']
+    study_customers = data_load['study_customers']
+    study_periods = grouped['YearMonth'].unique()
+
     grouped = grouped[grouped['Itemcode'].isin(study_items) & grouped['Customer ID'].isin(study_customers)]
     
     st.write("### Grouped Data Overview", grouped.head())
     
-    study_periods = grouped['YearMonth'].unique()
+   
     all_combinations = pd.MultiIndex.from_product([study_periods, study_items, study_customers], names=['YearMonth', 'Itemcode', 'Customer ID']).to_frame(index=False)
     complete_data = pd.merge(all_combinations, grouped, on=['YearMonth', 'Itemcode', 'Customer ID'], how='left').fillna({'Total Sales': 0})
     complete_data = complete_data.sort_values(by=['YearMonth', 'Customer ID', 'Itemcode'])
@@ -92,10 +98,50 @@ if uploaded_file is not None:
     st.write("X shape:", X.shape)
     st.write("y shape:", y.shape)
     
-    # Reshape the input data
-    X_reshaped = X.reshape(X.shape[0], X.shape[1], -1)
-    input_shape = (X_reshaped.shape[1], X_reshaped.shape[2])
-    total_size = y.shape[1] * y.shape[2]
+    
+    
+    
+    # Define the model architecture
+    X_reshaped = X.reshape(X.shape[0], X.shape[1], -1)  # Reshape the input data
+    input_shape = (X_reshaped.shape[1], X_reshaped.shape[2])  # Define the input shape
+    total_size = y.shape[1] * y.shape[2]  # Total size for reshaping
+
+    # Define custom objects dictionary
+    custom_objects = {
+        'mse': 'mean_squared_error'
+    }
+
+    # Load the model with custom objects
+    model = load_model('./params/sales_prediction_model.h5', custom_objects=custom_objects)
+    
+ 
+
+    # Make predictions
+    y_pred = model.predict(X_reshaped)
+
+    item_id = 110020
+    customer_id = 'COSTCO-CSC280'
+    item_index = np.where(study_items == item_id)[0][0]
+    customer_index = np.where(study_customers == customer_id)[0][0]
+    predicted_data = y_pred[:, customer_index, item_index]
+    true_data = y[:, customer_index, item_index]
+    plot_index = study_periods.astype(str)
+
+    st.write("### Real vs. Predicted Sales")
+    fig, ax = plt.subplots()
+    ax.plot(plot_index[time_steps:], true_data, label='Actual Sales')
+    ax.plot(plot_index[time_steps:], predicted_data, label='Predicted Sales', linestyle='--')
+    ax.set_title(f'Sales for Item: {item_dict[item_id]}, Customer: {customer_id}')
+    ax.set_xlabel('YearMonth')
+    ax.set_ylabel('Total Sales')
+    ax.legend()
+    ax.tick_params(axis='x', rotation=90)
+    last_pred_value = predicted_data[-1]
+    ax.text(plot_index[-1], last_pred_value, f'{last_pred_value:.2f}', color='red')
+    st.pyplot(fig)
+    
+    
+    
     
     
     

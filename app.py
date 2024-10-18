@@ -6,7 +6,8 @@ from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Reshape
 from tensorflow.keras.models import load_model
-
+import os
+import gdown
 # Title for the Streamlit app
 st.title('Sales Prediction Dashboard')
 
@@ -43,8 +44,20 @@ if uploaded_file is not None:
     last_period = grouped['YearMonth'].max()
     filtered_study = grouped[grouped['YearMonth'] == last_period]
     
-    # Load the data from the .npz file
-    data_load = np.load('./params/study_data.npz' , allow_pickle=True)
+    # Google Drive file ID from the shared link
+    file_id = '1jsDg72kFWuMiu1W2vmktAs5ot-Nh0RtC'
+    url = f'https://drive.google.com/uc?id={file_id}'
+
+    # Download the file and save it locally
+    output = './params/study_data.npz'
+    # Check if the file already exists before downloading
+    if not os.path.exists(output):
+        gdown.download(url, output, quiet=False)
+    else:
+        print(f"{output} already exists, skipping download.")
+
+    # Load the data from the downloaded file
+    data_load = np.load(output, allow_pickle=True)
     study_items = data_load['study_items']
     study_customers = data_load['study_customers']
     study_periods = grouped['YearMonth'].unique()
@@ -108,9 +121,20 @@ if uploaded_file is not None:
 
     # Define custom objects dictionary
 
+    # Google Drive file ID from the shared link
+    file_id = '1WbZMTszxHKo59R5kIMvA0UtX89EFWyia'
+    url = f'https://drive.google.com/uc?id={file_id}'
+
+    # Download the file and save it locally
+    output = './params/sales_prediction_model.h5'
+    # Check if the file already exists before downloading
+    if not os.path.exists(output):
+        gdown.download(url, output, quiet=False)
+    else:
+        print(f"{output} already exists, skipping download.")
+
     # Load the model with custom objects
-    model = load_model('./params/sales_prediction_model.h5', custom_objects={'mse': 'mean_squared_error'})
-    
+    model = load_model(output, custom_objects={'mse': 'mean_squared_error'})
  
 
     # Make predictions

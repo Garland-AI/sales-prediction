@@ -107,39 +107,78 @@ if uploaded_file is not None:
     total_size = y.shape[1] * y.shape[2]  # Total size for reshaping
 
     # Define custom objects dictionary
-    custom_objects = {
-        'mse': 'mean_squared_error'
-    }
 
     # Load the model with custom objects
-    model = load_model('./params/sales_prediction_model.h5', custom_objects=custom_objects)
+    model = load_model('./params/sales_prediction_model.h5', custom_objects={'mse': 'mean_squared_error'})
     
  
 
     # Make predictions
     y_pred = model.predict(X_reshaped)
 
-    item_id = 110020
-    customer_id = 'COSTCO-CSC280'
-    item_index = np.where(study_items == item_id)[0][0]
-    customer_index = np.where(study_customers == customer_id)[0][0]
-    predicted_data = y_pred[:, customer_index, item_index]
-    true_data = y[:, customer_index, item_index]
-    plot_index = study_periods.astype(str)
 
-    st.write("### Real vs. Predicted Sales")
-    fig, ax = plt.subplots()
-    ax.plot(plot_index[time_steps:], true_data, label='Actual Sales')
-    ax.plot(plot_index[time_steps:], predicted_data, label='Predicted Sales', linestyle='--')
-    ax.set_title(f'Sales for Item: {item_dict[item_id]}, Customer: {customer_id}')
-    ax.set_xlabel('YearMonth')
-    ax.set_ylabel('Total Sales')
-    ax.legend()
-    ax.tick_params(axis='x', rotation=90)
-    last_pred_value = predicted_data[-1]
-    ax.text(plot_index[-1], last_pred_value, f'{last_pred_value:.2f}', color='red')
-    st.pyplot(fig)
+    # User input for item_id and customer_id
+    item_id = st.text_input("Enter Item ID", value=110020)
+    customer_id = st.text_input("Enter Customer ID", value='COSTCO-CSC280')
+
+    if st.button("Inspect Prediction"):
+        # Convert inputs to the appropriate format
+        item_id = int(item_id)
+        item_index = np.where(study_items == item_id)[0][0]
+        customer_index = np.where(study_customers == customer_id)[0][0]
+
+
+        predicted_data = y_pred[:, customer_index, item_index]
+        true_data = y[:, customer_index, item_index]
+        plot_index = study_periods.astype(str)
+
+        st.write("### Real vs. Predicted Sales")
+        fig, ax = plt.subplots()
+        ax.plot(plot_index[time_steps:], true_data, label='Actual Sales')
+        ax.plot(plot_index[time_steps:], predicted_data, label='Predicted Sales', linestyle='--')
+        ax.set_title(f'Sales for Item: {item_dict[item_id]}, Customer: {customer_id}')
+        ax.set_xlabel('YearMonth')
+        ax.set_ylabel('Total Sales')
+        ax.legend()
+        ax.tick_params(axis='x', rotation=90)
+        last_pred_value = predicted_data[-1]
+        ax.text(plot_index[-1], last_pred_value, f'{last_pred_value:.2f}', color='red')
+        st.pyplot(fig)
     
+    if st.button("Show Prediction Data"):
+        last_X = prepared_data[-time_steps:].reshape(1, time_steps, -1)
+
+        last_prediction = model.predict(last_X).reshape(y.shape[1] , y.shape[2])
+        last_real = y[-1].reshape(y.shape[1] , y.shape[2])
+        last_train = y_pred[-1].reshape(y.shape[1] , y.shape[2])
+
+
+        last_prediction_df = pd.DataFrame(last_prediction, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name='Predicted Total Sales October').rename(columns={'index': 'Customer ID'})
+        last_train_df = pd.DataFrame(last_train, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name='Predicted Total Sales September').rename(columns={'index': 'Customer ID'})
+        # Assuming last_real and last_prediction have the same shape
+        last_real_df = pd.DataFrame(last_real, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name='Real Sales September').rename(columns={'index': 'Customer ID'})
+
+
+        merged_df = pd.merge(last_prediction_df, last_real_df , on=['Customer ID', 'Item ID'], how='left')
+        merged_df =  pd.merge(merged_df, last_train_df , on=['Customer ID', 'Item ID'], how='left')
+        
+        merged_df = merged_df[(merged_df['Predicted Total Sales October'] > 0 ) & (merged_df['Predicted Total Sales September'] > 0)]
+        # Map the unit prices from the dictionary to a new column
+        merged_df['Unit Price'] = merged_df['Item ID'].map(unit_price_dict)
+
+        # Calculate the quantity
+        merged_df['Predicted Quantity October'] = merged_df['Predicted Total Sales October'] / merged_df['Unit Price']
+
+        merged_df['Real Quantity September'] = merged_df['Real Sales September'] / merged_df['Unit Price']
+
+        merged_df['Predicted Quantity September'] = merged_df['Predicted Total Sales September'] / merged_df['Unit Price']
+
+        merged_df = merged_df.drop(columns=['Unit Price'])[['Customer ID', 'Item ID','Real Quantity September', 'Real Sales September' , 'Predicted Quantity September' , 'Predicted Total Sales September','Predicted Quantity October', 'Predicted Total Sales October'] ]
+        
+        st.write("### Prediction Data")       
+        st.dataframe(merged_df)
+      
+
     
     
     

@@ -10,11 +10,11 @@ import os
 import gdown
 # Title for the Streamlit app
 st.title('Sales Prediction Dashboard')
-
+st.write("## Our web app is currently undergoing some exciting updates to serve you better...")
 # Upload Excel file
 uploaded_file = st.file_uploader("Choose an Excel file", type="xlsx")
 
-if uploaded_file is not None:
+if uploaded_file is not None and False:
     # Path to the directory
     params_dir = './params'
 

@@ -178,35 +178,54 @@ if uploaded_file is not None:
         st.pyplot(fig)
     
     if st.button("Show Prediction Data"):
+        max_period = study_periods[-1]
+
+        # Get the name of the current month
+        current_month_name = max_period.strftime('%B')
+
+        # Calculate the next period and get the name of the next month
+        next_period = max_period + 1
+        next_month_name = next_period.strftime('%B')
+
+
         last_X = prepared_data[-time_steps:].reshape(1, time_steps, -1)
 
         last_prediction = model.predict(last_X).reshape(y.shape[1] , y.shape[2])
+
         last_real = y[-1].reshape(y.shape[1] , y.shape[2])
+
         last_train = y_pred[-1].reshape(y.shape[1] , y.shape[2])
 
+        last_prediction_df = pd.DataFrame(last_prediction, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name=f'Predicted Total Sales {next_month_name}').rename(columns={'index': 'Customer ID'})
 
-        last_prediction_df = pd.DataFrame(last_prediction, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name='Predicted Total Sales October').rename(columns={'index': 'Customer ID'})
-        last_train_df = pd.DataFrame(last_train, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name='Predicted Total Sales September').rename(columns={'index': 'Customer ID'})
+        last_train_df = pd.DataFrame(last_train, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name=f'Predicted Total Sales {current_month_name}').rename(columns={'index': 'Customer ID'})
+
         # Assuming last_real and last_prediction have the same shape
-        last_real_df = pd.DataFrame(last_real, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name='Real Sales September').rename(columns={'index': 'Customer ID'})
+        last_real_df = pd.DataFrame(last_real, index=study_customers, columns=study_items).reset_index().melt(id_vars='index', var_name='Item ID', value_name=f'Real Sales {current_month_name}').rename(columns={'index': 'Customer ID'})
 
 
         merged_df = pd.merge(last_prediction_df, last_real_df , on=['Customer ID', 'Item ID'], how='left')
+
+
         merged_df =  pd.merge(merged_df, last_train_df , on=['Customer ID', 'Item ID'], how='left')
-        
-        merged_df = merged_df[(merged_df['Predicted Total Sales October'] > 0 ) & (merged_df['Predicted Total Sales September'] > 0)]
+
+
+
+
+        merged_df = merged_df[(merged_df[f'Predicted Total Sales {next_month_name}'] > 0 ) & (merged_df[f'Predicted Total Sales {current_month_name}'] > 0)]
+
+
         # Map the unit prices from the dictionary to a new column
         merged_df['Unit Price'] = merged_df['Item ID'].map(unit_price_dict)
 
         # Calculate the quantity
-        merged_df['Predicted Quantity October'] = merged_df['Predicted Total Sales October'] / merged_df['Unit Price']
+        merged_df[f'Predicted Quantity {next_month_name}'] = merged_df[f'Predicted Total Sales {next_month_name}'] / merged_df['Unit Price']
 
-        merged_df['Real Quantity September'] = merged_df['Real Sales September'] / merged_df['Unit Price']
+        merged_df[f'Real Quantity {current_month_name}'] = merged_df[f'Real Sales {current_month_name}'] / merged_df['Unit Price']
 
-        merged_df['Predicted Quantity September'] = merged_df['Predicted Total Sales September'] / merged_df['Unit Price']
+        merged_df[f'Predicted Quantity {current_month_name}'] = merged_df[f'Predicted Total Sales {current_month_name}'] / merged_df['Unit Price']
 
-        merged_df = merged_df.drop(columns=['Unit Price'])[['Customer ID', 'Item ID','Real Quantity September', 'Real Sales September' , 'Predicted Quantity September' , 'Predicted Total Sales September','Predicted Quantity October', 'Predicted Total Sales October'] ]
-        
+        merged_df = merged_df.drop(columns=['Unit Price'])[['Customer ID', 'Item ID',f'Real Quantity {current_month_name}', f'Real Sales {current_month_name}' , f'Predicted Quantity {current_month_name}' , f'Predicted Total Sales {current_month_name}',f'Predicted Quantity {next_month_name}', f'Predicted Total Sales {next_month_name}'] ]
         st.write("### Prediction Data")       
         st.dataframe(merged_df)
       

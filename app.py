@@ -10,9 +10,16 @@ import os
 import gdown
 # Title for the Streamlit app
 st.title('Sales Prediction Dashboard')
-# Upload Excel file
-uploaded_file = st.file_uploader("Choose an Excel file", type="xlsx")
 
+under_maintenance = True
+
+if under_maintenance:
+    st.write("## Under Maintenance")
+    st.write("This app is currently under maintenance. Please check back later.")
+    uploaded_file = None
+else :
+    uploaded_file = st.file_uploader("Choose an Excel file", type="xlsx")  
+ 
 if uploaded_file is not None:
     # Path to the directory
     params_dir = './params'

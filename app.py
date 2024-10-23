@@ -11,7 +11,7 @@ import gdown
 # Title for the Streamlit app
 st.title('Sales Prediction Dashboard')
 
-under_maintenance = True
+under_maintenance = False
 
 if under_maintenance:
     st.write("## Under Maintenance")

@@ -8,6 +8,21 @@ from tensorflow.keras.layers import LSTM, Dense, Reshape
 from tensorflow.keras.models import load_model
 import os
 import gdown
+
+
+
+
+# Inject custom CSS to hide the element
+hide_profile_css = """
+<style>
+    [xpath="//*[@id='root']/div[1]/div/div/div/div/a/img"] {
+        display: none;
+    }
+</style>
+"""
+st.markdown(hide_profile_css, unsafe_allow_html=True)
+
+
 # Title for the Streamlit app
 st.title('Sales Prediction Dashboard')
 
